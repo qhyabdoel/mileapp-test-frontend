@@ -2,16 +2,39 @@
   <div class="p-4 sm:p-6 max-w-6xl mx-auto">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-      <h1 class="text-2xl font-bold text-center sm:text-left">Tasks</h1>
+      <h1 class="text-2xl font-bold">Tasks</h1>
       <button
         @click="openForm()"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded text-sm sm:text-base self-center sm:self-auto cursor-pointer"
+        class="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded text-sm sm:text-base cursor-pointer"
       >
         + New Task
       </button>
     </div>
 
-    <div class="overflow-x-auto bg-white shadow rounded">
+    <!-- Filters -->
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+      <select
+        v-model="query.status"
+        @change="loadTasks"
+        class="border p-2 rounded w-full sm:w-auto text-sm cursor-pointer"
+      >
+        <option value="">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="in-progress">In Progress</option>
+        <option value="done">Done</option>
+      </select>
+    </div>
+
+    <!-- Mobile Friendly Card View -->
+    <div class="sm:hidden space-y-3">
+      <div v-for="task in tasks" :key="task.id" class="border rounded p-3 bg-white shadow-sm">
+        <div class="font-semibold">{{ task.title }}</div>
+        <div class="text-sm text-gray-600">{{ task.description }}</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto bg-white shadow rounded hidden sm:block">
       <table class="w-full text-left border-collapse text-sm sm:text-base">
         <thead>
           <tr class="bg-gray-100">
