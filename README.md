@@ -20,6 +20,8 @@ The mock API supports query parameters such as:
 }
 ```
 
+url: https://mileapp-test-frontend-production.up.railway.app/
+
 ## Tech Stack
 
 - **Vue 3** with `<script setup>` syntax
