@@ -20,5 +20,5 @@ export interface TaskQuery {
   limit?: number
   order?: 'asc' | 'desc'
   sort?: 'createdAt' | 'title' | 'status'
-  status?: 'pending' | 'in-progress' | 'done'
+  status?: 'pending' | 'in-progress' | 'done' | ''
 }

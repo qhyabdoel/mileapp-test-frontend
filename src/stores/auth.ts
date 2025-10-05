@@ -10,10 +10,12 @@ export const useAuthStore = defineStore('auth', {
       const { data } = await api.post('login', { username, password })
       this.token = data.token
       localStorage.setItem('token', data.token)
+      localStorage.setItem('username', username)
     },
     logout() {
       this.token = ''
       localStorage.removeItem('token')
+      localStorage.removeItem('username')
     },
   },
 })

@@ -1,28 +1,42 @@
 <template>
-  <div class="p-4 sm:p-6 max-w-6xl mx-auto">
+  <div class="px-4 pb-12 pt-4 sm:p-6 max-w-6xl mx-auto">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-      <h1 class="text-2xl font-bold">Tasks</h1>
+    <header class="flex justify-between mb-6 border-b-2 pb-3 border-gray-200">
+      <h1 class="text-xl font-semibold text-gray-700">Tasks Dashboard</h1>
+
+      <div class="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 text-left">
+        <span class="text-gray-600 text-sm">Hi, {{ username }}</span>
+        <button
+          @click="logout"
+          class="bg-red-400 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm cursor-pointer"
+        >
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <!-- Filters -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <label for="status" class="text-sm font-medium text-gray-600">Filter:</label>
+        <select
+          id="status"
+          v-model="query.status"
+          @change="loadTasks"
+          class="border p-2 rounded text-sm"
+        >
+          <option value="">All</option>
+          <option value="pending">Pending</option>
+          <option value="in-progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
       <button
         @click="openForm()"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded text-sm sm:text-base cursor-pointer"
+        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm sm:text-base cursor-pointer"
       >
         + New Task
       </button>
-    </div>
-
-    <!-- Filters -->
-    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-      <select
-        v-model="query.status"
-        @change="loadTasks"
-        class="border p-2 rounded w-full sm:w-auto text-sm cursor-pointer"
-      >
-        <option value="">All Status</option>
-        <option value="pending">Pending</option>
-        <option value="in-progress">In Progress</option>
-        <option value="done">Done</option>
-      </select>
     </div>
 
     <!-- Mobile Friendly Card View -->
@@ -30,6 +44,32 @@
       <div v-for="task in tasks" :key="task.id" class="border rounded p-3 bg-white shadow-sm">
         <div class="font-semibold">{{ task.title }}</div>
         <div class="text-sm text-gray-600">{{ task.description }}</div>
+        <div class="mt-2 flex justify-between items-center text-sm">
+          <span
+            :class="{
+              'text-yellow-600': task.status === 'pending',
+              'text-blue-600': task.status === 'in-progress',
+              'text-green-600': task.status === 'done',
+            }"
+          >
+            {{ task.status }}
+          </span>
+          <span class="text-gray-500">{{ formatData(task.createdAt) }}</span>
+        </div>
+        <div class="flex gap-2 justify-end mt-2">
+          <button
+            @click="openForm(task)"
+            class="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-sm cursor-pointer"
+          >
+            Edit
+          </button>
+          <button
+            @click="openDeleteModal(task)"
+            class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm cursor-pointer"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
 
@@ -79,13 +119,13 @@
             <td class="p-3 flex flex-wrap gap-2 justify-end">
               <button
                 @click="openForm(task)"
-                class="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-sm"
+                class="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-sm cursor-pointer"
               >
                 Edit
               </button>
               <button
-                @click="removeTask(task.id)"
-                class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm"
+                @click="openDeleteModal(task)"
+                class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm cursor-pointer"
               >
                 Delete
               </button>
@@ -109,15 +149,15 @@
       <div class="flex justify-between sm:justify-end items-center w-full sm:w-auto gap-2">
         <button
           @click="prevPage"
-          :disabled="!query.page || query.page <= 1"
-          class="flex-1 sm:flex-none px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-100 transition text-sm sm:text-base"
+          :disabled="!query.page || query.page <= 1 || isLoading"
+          class="flex-1 sm:flex-none px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-100 transition text-sm sm:text-base cursor-pointer"
         >
           Prev
         </button>
         <button
           @click="nextPage"
-          :disabled="!query.page || query.page >= totalPages"
-          class="flex-1 sm:flex-none px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-100 transition text-sm sm:text-base"
+          :disabled="!query.page || query.page >= totalPages || isLoading"
+          class="flex-1 sm:flex-none px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-100 transition text-sm sm:text-base cursor-pointer"
         >
           Next
         </button>
@@ -134,10 +174,20 @@
           {{ form.id ? 'Edit Task' : 'New Task' }}
         </h2>
         <input v-model="form.title" placeholder="Title" class="border p-2 mb-2 w-full rounded" />
+
+        <!-- Validation Error -->
+        <div
+          class="bg-red-100 w-full flex p-0 justify-between px-2 py-1 rounded mb-3"
+          v-if="errorMsg"
+        >
+          <p class="text-red-600 text-sm mt-1">{{ errorMsg }}</p>
+          <button @click="errorMsg = ''" class="text-red-600 font-bold cursor-pointer">x</button>
+        </div>
+
         <textarea
           v-model="form.description"
           placeholder="Description"
-          class="border p-2 mb-2 w-full rounded"
+          class="border p-2 mb-2 mt-1 w-full rounded"
         ></textarea>
         <select v-model="form.status" class="border p-2 mb-4 w-full rounded">
           <option value="pending">Pending</option>
@@ -148,10 +198,46 @@
           <button
             @click="saveTask"
             class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm cursor-pointer"
+            :disabled="isSaving"
           >
             Save
           </button>
-          <button @click="closeForm" class="border px-4 py-2 rounded text-sm cursor-pointer">
+          <button
+            @click="closeForm"
+            class="border px-4 py-2 rounded text-sm cursor-pointer"
+            :disabled="isSaving"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div
+      v-if="showDeleteModal"
+      class="fixed inset-0 flex justify-center items-start pt-28 bg-black/50 z-50 px-2"
+    >
+      <div class="bg-white p-6 rounded shadow-lg w-full max-w-sm text-center">
+        <h2 class="text-lg font-semibold mb-4">Confirm Deletion</h2>
+        <p class="text-gray-600 mb-6">
+          Are you sure you want to delete
+          <span class="font-medium text-red-500">{{ taskToDelete?.title }}</span
+          >?
+        </p>
+        <div class="flex justify-center gap-3">
+          <button
+            @click="confirmDelete"
+            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm cursor-pointer"
+            :disabled="isDeleting"
+          >
+            Delete
+          </button>
+          <button
+            @click="closeDeleteModal"
+            class="border px-4 py-2 rounded text-sm cursor-pointer"
+            :disabled="isDeleting"
+          >
             Cancel
           </button>
         </div>
@@ -161,12 +247,26 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import type { Task, TaskQuery } from '../types/task'
 import { createTask, deleteTask, getTasks, updateTask } from '../api/tasks'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const auth = useAuthStore()
+
+function logout() {
+  auth.logout()
+  router.push('/') // redirect back to login
+}
 
 const showForm = ref(false)
 const form = ref<Partial<Task>>({ title: '', description: '', status: 'pending' })
+const isLoading = ref(false)
+const isSaving = ref(false)
+const isDeleting = ref(false)
+const username = ref(localStorage.getItem('username') || 'User')
 
 function openForm(task?: Task) {
   form.value = task ? { ...task } : { title: '', description: '', status: 'pending' }
@@ -181,23 +281,27 @@ function closeForm() {
 const tasks = ref<Task[]>([])
 const total = ref(0)
 const totalPages = ref(1)
+const errorMsg = ref('')
 
 const query = ref<TaskQuery>({
   page: 1,
   limit: 5,
   sort: 'createdAt',
   order: 'desc' as 'asc' | 'desc',
-  status: 'pending',
+  status: '',
 })
 
 async function loadTasks() {
   try {
+    isLoading.value = true
     const res = await getTasks(query.value)
     tasks.value = res.data
     total.value = res.meta.total
     totalPages.value = Math.ceil(total.value / (query.value.limit || 5))
   } catch (error) {
     console.error('Failed to load tasks:', error)
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -205,6 +309,7 @@ onMounted(loadTasks)
 
 async function saveTask() {
   try {
+    isSaving.value = true
     if (form.value.id) {
       await updateTask(form.value.id, form.value)
     } else {
@@ -214,21 +319,16 @@ async function saveTask() {
     // Refresh the task list after saving
     await loadTasks()
     closeForm()
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Failed to save task:', error)
-  }
-}
-
-async function removeTask(id: string) {
-  if (!id) return
-  if (!confirm('Are you sure you want to delete this task?')) return
-
-  try {
-    await deleteTask(id) // call your API delete function
-    await loadTasks() // refresh list
-  } catch (err) {
-    console.error('delete failed', err)
-    alert('Failed to delete task')
+    if (typeof error === 'object' && error && 'response' in error) {
+      const err = error as { response?: { data?: { error?: string } } }
+      errorMsg.value = err.response?.data?.error || 'An error occurred'
+    } else {
+      errorMsg.value = 'An unknown error occurred'
+    }
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -239,6 +339,8 @@ function changeSort(field: 'createdAt' | 'title' | 'status') {
     query.value.sort = field
     query.value.order = 'asc'
   }
+
+  loadTasks()
 }
 
 function nextPage() {
@@ -257,5 +359,62 @@ function prevPage() {
 function formatData(dateStr: string) {
   const date = new Date(dateStr)
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (!showForm.value) return
+
+  // ✅ Ctrl+S or Cmd+S
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault()
+    saveTask()
+  }
+
+  // ✅ Enter key (save form)
+  if (e.key === 'Enter' && e.target instanceof HTMLElement && e.target.tagName !== 'TEXTAREA') {
+    e.preventDefault()
+    saveTask()
+  }
+
+  // ✅ Escape key (close modal)
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    closeForm()
+  }
+}
+
+// Automatically add/remove listener based on modal visibility
+watch(showForm, (val) => {
+  if (val) window.addEventListener('keydown', handleKeydown)
+  else window.removeEventListener('keydown', handleKeydown)
+})
+
+const showDeleteModal = ref(false)
+const taskToDelete = ref<Task | null>(null)
+
+function openDeleteModal(task: Task) {
+  taskToDelete.value = task
+  showDeleteModal.value = true
+}
+
+function closeDeleteModal() {
+  showDeleteModal.value = false
+  taskToDelete.value = null
+}
+
+async function confirmDelete() {
+  if (!taskToDelete.value) return
+
+  try {
+    isDeleting.value = true
+    await deleteTask(taskToDelete.value.id!)
+    await loadTasks()
+    closeDeleteModal()
+  } catch (err) {
+    console.error('Failed to delete task:', err)
+    alert('Failed to delete task')
+  } finally {
+    isDeleting.value = false
+  }
 }
 </script>
