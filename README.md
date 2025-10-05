@@ -22,20 +22,11 @@ The mock API supports query parameters such as:
 
 ## Tech Stack
 
-### **Frontend**
-
 - **Vue 3** with `<script setup>` syntax
 - **TypeScript** for strong typing
 - **Tailwind CSS** for responsive UI
 - **Axios** for API requests
 - **Vite** as the build tool
-
-### **Backend (Mock API)**
-
-- **Express.js**
-- **PostgreSQL** (mocked or simulated dataset)
-- **pg** library for database connection
-- **CORS**, **dotenv**, **UUID** for supporting modules
 
 ---
 
